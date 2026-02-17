@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "207415055154",
+    "project_id": "nutriveda-7fbbc",
+    "storage_bucket": "nutriveda-7fbbc.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:207415055154:android:b80b36e11a89e22c727d2b",
+        "android_client_info": {
+          "package_name": "com.example.nutri_veda"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAD3lgVPdVUlCJ9uoowWUJOQpT995dnCM8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
