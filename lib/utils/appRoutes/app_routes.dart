@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:nutri_veda/models/user_model.dart';
+import 'package:nutri_veda/models/doctor_user_model.dart';
 import 'package:nutri_veda/screens/auth/login_screen.dart';
 import 'package:nutri_veda/screens/auth/sign_up_screen.dart';
 import 'package:nutri_veda/screens/doctor/doctor_dashboard.dart';

@@ -1,17 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:nutri_veda/models/doctor_patient_model.dart';
+import 'package:nutri_veda/screens/doctor/add_patient_screen.dart';
 import 'package:nutri_veda/screens/doctor/patients_profile_screen.dart';
 import 'package:nutri_veda/screens/doctor/widgets/patient_card.dart';
+import 'package:nutri_veda/services/patient_service.dart';
 import 'package:nutri_veda/utils/appTheme/app_theme.dart';
 
 enum PatientFilter { all, pending }
 
 class PatientsListScreen extends StatefulWidget {
-  final List<DoctorPatient> patients;
+  final String doctorId; // ✅ Pass doctorId
 
   const PatientsListScreen({
     super.key,
-    required this.patients,
+    required this.doctorId,
   });
 
   @override
@@ -21,13 +23,14 @@ class PatientsListScreen extends StatefulWidget {
 class _PatientsListScreenState extends State<PatientsListScreen> {
   String _searchQuery = '';
   PatientFilter _selectedFilter = PatientFilter.all;
-  bool _isLoading = false;
 
-  // ---------------- FILTERED PATIENTS ----------------
-  List<DoctorPatient> get _filteredPatients {
+  final PatientService _patientService = PatientService();
+
+  // ---------------- FILTER LOGIC ----------------
+  List<DoctorPatient> _applyFilters(List<DoctorPatient> patients) {
     final query = _searchQuery.toLowerCase();
 
-    return widget.patients.where((patient) {
+    return patients.where((patient) {
       final matchesFilter = _selectedFilter == PatientFilter.all ||
           (_selectedFilter == PatientFilter.pending && !patient.hasDietChart);
 
@@ -49,18 +52,58 @@ class _PatientsListScreenState extends State<PatientsListScreen> {
         title: const Text('Patients List'),
         scrolledUnderElevation: 0,
         surfaceTintColor: Colors.transparent,
+        backgroundColor: AppTheme.lightTheme.appBarTheme.backgroundColor,
+        actions: [
+          IconButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const AddPatientScreen(),
+                ),
+              );
+            },
+            icon: Icon(Icons.add),
+            color: colorScheme.primary,
+          ),
+        ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            _buildSearchBar(colorScheme),
-            const SizedBox(height: 16),
-            _buildFilterChip(colorScheme),
-            const SizedBox(height: 16),
-            Expanded(child: _buildPatientList()),
-          ],
-        ),
+
+      // 🔥 STREAM BUILDER STARTS HERE
+      body: StreamBuilder<List<DoctorPatient>>(
+        stream: _patientService.getPatients(widget.doctorId),
+        builder: (context, snapshot) {
+          // ---------------- LOADING ----------------
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          // ---------------- ERROR ----------------
+          if (snapshot.hasError) {
+            return Center(
+              child: Text('Error: ${snapshot.error}'),
+            );
+          }
+
+          final patients = snapshot.data ?? [];
+
+          final filteredPatients = _applyFilters(patients);
+
+          return Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              children: [
+                _buildSearchBar(colorScheme),
+                const SizedBox(height: 16),
+                _buildFilterChip(colorScheme),
+                const SizedBox(height: 16),
+                Expanded(
+                  child: _buildPatientList(filteredPatients),
+                ),
+              ],
+            ),
+          );
+        },
       ),
     );
   }
@@ -120,6 +163,7 @@ class _PatientsListScreenState extends State<PatientsListScreen> {
       child: GestureDetector(
         onTap: _openFilterSheet,
         child: Chip(
+          backgroundColor: colorScheme.primary.withOpacity(0.1),
           label: Text(
             label,
             style: const TextStyle(fontWeight: FontWeight.w600),
@@ -135,60 +179,39 @@ class _PatientsListScreenState extends State<PatientsListScreen> {
   }
 
   // ---------------- PATIENT LIST ----------------
-  Widget _buildPatientList() {
-    if (widget.patients.isEmpty) {
+  Widget _buildPatientList(List<DoctorPatient> patients) {
+    if (patients.isEmpty) {
       return Center(
         child: Text(
-          'No Patients Added Yet',
+          'No Patients Found',
           style: AppTheme.lightTheme.textTheme.titleMedium
               ?.copyWith(fontWeight: FontWeight.w600),
         ),
       );
     }
 
-    if (_filteredPatients.isEmpty) {
-      return Center(
-        child: Text(
-          'No matching patients found',
-          style: AppTheme.lightTheme.textTheme.titleMedium
-              ?.copyWith(fontWeight: FontWeight.w600),
-        ),
-      );
-    }
+    return ListView.separated(
+      itemCount: patients.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 12),
+      itemBuilder: (context, index) {
+        final patient = patients[index];
 
-    return Stack(
-      children: [
-        ListView.separated(
-          itemCount: _filteredPatients.length,
-          separatorBuilder: (_, __) => const SizedBox(height: 12),
-          itemBuilder: (context, index) {
-            final patient = _filteredPatients[index];
-
-            return GestureDetector(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => PatientsProfileScreen(patient: patient),
-                  ),
-                );
-              },
-              child: PatientCard(patient: patient),
+        return GestureDetector(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => PatientsProfileScreen(patient: patient),
+              ),
             );
           },
-        ),
-        if (_isLoading)
-          Container(
-            color: Colors.black.withOpacity(0.05),
-            child: const Center(
-              child: CircularProgressIndicator(),
-            ),
-          ),
-      ],
+          child: PatientCard(patient: patient),
+        );
+      },
     );
   }
 
-  // ---------------- FILTER BOTTOM SHEET ----------------
+  // ---------------- FILTER SHEET ----------------
   void _openFilterSheet() {
     final colorScheme = AppTheme.lightTheme.colorScheme;
 
@@ -203,25 +226,7 @@ class _PatientsListScreenState extends State<PatientsListScreen> {
           padding: const EdgeInsets.all(24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  margin: const EdgeInsets.only(bottom: 16),
-                  decoration: BoxDecoration(
-                    color: colorScheme.outline,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-              ),
-              Text(
-                'Filter Patients',
-                style: AppTheme.lightTheme.textTheme.titleLarge
-                    ?.copyWith(fontWeight: FontWeight.w600),
-              ),
-              const SizedBox(height: 24),
               _buildFilterOption(
                 title: 'All Patients',
                 icon: Icons.groups_rounded,
@@ -240,7 +245,6 @@ class _PatientsListScreenState extends State<PatientsListScreen> {
     );
   }
 
-  // ---------------- FILTER OPTION ----------------
   Widget _buildFilterOption({
     required String title,
     required IconData icon,
@@ -250,20 +254,14 @@ class _PatientsListScreenState extends State<PatientsListScreen> {
     final isSelected = _selectedFilter == filter;
 
     return GestureDetector(
-      onTap: () async {
+      onTap: () {
         Navigator.pop(context);
 
         setState(() {
           _selectedFilter = filter;
-          _isLoading = true;
         });
-
-        await Future.delayed(const Duration(milliseconds: 500));
-
-        setState(() => _isLoading = false);
       },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
+      child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: isSelected
@@ -276,19 +274,9 @@ class _PatientsListScreenState extends State<PatientsListScreen> {
         ),
         child: Row(
           children: [
-            CircleAvatar(
-              radius: 20,
-              backgroundColor: colorScheme.primary.withOpacity(0.12),
-              child: Icon(icon, color: colorScheme.primary),
-            ),
+            Icon(icon, color: colorScheme.primary),
             const SizedBox(width: 16),
-            Expanded(
-              child: Text(
-                title,
-                style: AppTheme.lightTheme.textTheme.bodyLarge
-                    ?.copyWith(fontWeight: FontWeight.w600),
-              ),
-            ),
+            Expanded(child: Text(title)),
             if (isSelected)
               Icon(Icons.check_circle, color: colorScheme.primary),
           ],

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:nutri_veda/core/widgets/global_textfield.dart';
 import 'package:nutri_veda/core/widgets/snackbar_helper.dart';
-import 'package:nutri_veda/models/user_model.dart';
+import 'package:nutri_veda/models/doctor_user_model.dart';
 import 'package:nutri_veda/screens/auth/widgets/app_logo.dart';
 import 'package:nutri_veda/screens/auth/widgets/auth_redirect_text.dart';
 import 'package:nutri_veda/screens/auth/widgets/role_toggle_section.dart';

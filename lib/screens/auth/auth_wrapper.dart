@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:nutri_veda/models/user_model.dart';
+import 'package:nutri_veda/models/doctor_user_model.dart';
 import 'package:nutri_veda/screens/auth/login_screen.dart';
 import 'package:nutri_veda/screens/doctor/doctor_dashboard.dart';
 import 'package:nutri_veda/screens/patient/patient_dashboard.dart';
